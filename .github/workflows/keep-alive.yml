@@ -2,9 +2,8 @@ name: Keep Supabase Alive
 
 on:
   schedule:
-    # Runs every day at midnight UTC (0 0 * * *)
     - cron: '0 0 * * *'
-  workflow_dispatch: # Allows you to run it manually from GitHub to test it
+  workflow_dispatch:
 
 jobs:
   ping-db:
@@ -19,7 +18,7 @@ jobs:
           node-version: '20'
 
       - name: Install dependencies
-        run: npm install @supabase/supabase-js
+        run: npm install @supabase/supabase-js ws
 
       - name: Ping Supabase Database
         env:
@@ -28,7 +27,11 @@ jobs:
         run: |
           node -e "
             const { createClient } = require('@supabase/supabase-js');
-            const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+            const ws = require('ws');
+            const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, {
+              auth: { persistSession: false },
+              realtime: { transport: ws }
+            });
             async function run() {
               const { data, error } = await supabase.from('_keep_alive').select('*').limit(1);
               if (error && error.code !== 'PGRST116') {
