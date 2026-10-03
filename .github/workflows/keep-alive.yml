@@ -8,6 +8,17 @@ on:
 jobs:
   ping-db:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        db:
+          - name: "Database 1"
+            url_key: SUPABASE_URL
+            anon_key: SUPABASE_ANON_KEY
+          - name: "Database 2"
+            url_key: SUPABASE_URL_1
+            anon_key: SUPABASE_ANON_KEY_1
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -20,25 +31,36 @@ jobs:
       - name: Install dependencies
         run: npm install @supabase/supabase-js ws
 
-      - name: Ping Supabase Database
+      - name: Ping Supabase Database (${{ matrix.db.name }})
         env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_URL: ${{ secrets[matrix.db.url_key] }}
+          SUPABASE_ANON_KEY: ${{ secrets[matrix.db.anon_key] }}
         run: |
           node -e "
             const { createClient } = require('@supabase/supabase-js');
             const ws = require('ws');
-            const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, {
+
+            const url = process.env.SUPABASE_URL;
+            const key = process.env.SUPABASE_ANON_KEY;
+
+            if (!url || !key) {
+              console.error('Missing URL or Anon Key for this step.');
+              process.exit(1);
+            }
+
+            const supabase = createClient(url, key, {
               auth: { persistSession: false },
               realtime: { transport: ws }
             });
+
             async function run() {
               const { data, error } = await supabase.from('_keep_alive').select('*').limit(1);
-              if (error && error.code !== 'PGRST116') {
-                console.error('Ping failed:', error);
+              if (error) {
+                console.error('Error pinging database:', error.message);
                 process.exit(1);
               }
-              console.log('Successfully pinged Supabase!');
+              console.log('Successfully pinged database!');
             }
+
             run();
           "
