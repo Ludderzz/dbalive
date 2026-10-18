@@ -18,6 +18,9 @@ jobs:
           - name: "Database 2"
             url_key: SUPABASE_URL_1
             anon_key: SUPABASE_ANON_KEY_1
+          - name: "Database 3"
+            url_key: SUPABASE_URL_2
+            anon_key: SUPABASE_ANON_KEY_2
 
     steps:
       - name: Checkout repository
